@@ -7,7 +7,9 @@ It includes both a CLI utility and a web interface with a timeline of commits.
 ## Requirements
 
 * Python 3.8+
-* Access to your cluster via a kubeconfig file (no `kubectl` required)
+* Access to your cluster configuration. The CLI expects to run inside the
+  cluster, while the web UI loads your local kubeconfig when running outside of
+  Kubernetes.
 * Access to a local or remote Git repository
 * Git installed in the environment (required by GitPython). The provided
   Dockerfile installs it automatically.
@@ -45,6 +47,10 @@ python -m cluster_rollback.web.app
 
 Open `http://localhost:8000` to view snapshots and trigger rollbacks.
 
+When running inside a cluster, the web application watches resource events and
+automatically creates new snapshots on changes. This allows you to inspect a
+timeline of cluster states and roll back to any previous snapshot via the UI.
+
 LDAP authentication and detailed resource selection are out of scope for this
 MVP but can be added later.
 
@@ -57,7 +63,8 @@ docker pull ghcr.io/harchuk/cluster-rollback:latest
 ```
 
 Apply the following manifest to run the tool in your cluster. A copy is
-available under `k8s/deployment.yaml` for convenience:
+available under `k8s/deployment.yaml` for convenience. The rest of the
+`k8s/` directory contains the accompanying RBAC and service definitions:
 
 ```yaml
 apiVersion: apps/v1
@@ -96,6 +103,16 @@ spec:
 Expose the service with an Ingress or a LoadBalancer according to your
 environment. Once deployed, access the UI and use the timeline to select the
 desired snapshot and roll back with a single click.
+
+### Helm chart
+
+For a more configurable installation, a Helm chart is available under
+`helm/cluster-rollback`:
+
+```bash
+helm install cluster-rollback ./helm/cluster-rollback \
+  --create-namespace --namespace cluster-rollback
+```
 
 ## Continuous delivery
 
