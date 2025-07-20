@@ -1,11 +1,12 @@
-from flask import Flask, render_template_string, redirect, url_for
+from flask import Flask, render_template_string, redirect, url_for, request, flash
 from git import Repo
 from kubernetes import client, config, utils
 import os
+from cluster_rollback.snapshot import take_snapshot, ensure_repo
 
 app = Flask(__name__)
-repo = Repo('.', search_parent_directories=True)
 SNAPSHOT_DIR = os.path.join(os.path.dirname(__file__), '..', 'snapshots')
+repo = ensure_repo()
 
 TEMPLATE = """
 <!doctype html>
@@ -23,10 +24,15 @@ TEMPLATE = """
     .left::before { right: -8px; }
     .right { left: 50%; }
     .right::before { left: -8px; }
+    .snapshot-btn { display: inline-block; margin-bottom: 20px; padding: 10px 20px; background: #4CAF50; color: #fff; border: none; border-radius: 4px; text-decoration: none; font-size: 16px; cursor: pointer; }
+    .snapshot-btn:hover { background: #388E3C; }
   </style>
 </head>
 <body>
   <h1>Snapshot Timeline</h1>
+  <form method="post" action="{{ url_for('snapshot') }}">
+    <button type="submit" class="snapshot-btn">Создать снапшот</button>
+  </form>
   <div class="timeline">
     {% for c in commits %}
       <div class="entry {{ 'left' if loop.index % 2 == 0 else 'right' }}">
@@ -55,5 +61,13 @@ def rollback(commit):
     utils.create_from_yaml(client.ApiClient(), snapshot_path)
     return redirect(url_for('index'))
 
+@app.route('/snapshot', methods=['POST'])
+def snapshot():
+    take_snapshot()
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
+    # При старте приложения — если нет ни одного снапшота, создать первый
+    if not list(repo.iter_commits('HEAD')):
+        take_snapshot()
     app.run(host='0.0.0.0', port=8000)
