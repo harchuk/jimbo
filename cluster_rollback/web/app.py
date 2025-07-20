@@ -1,6 +1,6 @@
 from flask import Flask, render_template_string, redirect, url_for
 from git import Repo
-import subprocess
+from kubernetes import client, config, utils
 import os
 
 app = Flask(__name__)
@@ -51,7 +51,8 @@ def rollback(commit):
     timestamp = obj.message.strip().split()[1]
     repo.git.checkout(commit, '--', SNAPSHOT_DIR)
     snapshot_path = os.path.join(SNAPSHOT_DIR, timestamp, 'resources.yaml')
-    subprocess.run(['kubectl', 'apply', '-f', snapshot_path], check=True)
+    config.load_kube_config()
+    utils.create_from_yaml(client.ApiClient(), snapshot_path)
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
