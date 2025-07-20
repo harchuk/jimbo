@@ -30,17 +30,29 @@ def take_snapshot():
 
     resources = []
     for item in core.list_pod_for_all_namespaces().items:
-        resources.append(api_client.sanitize_for_serialization(item))
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
     for item in core.list_service_for_all_namespaces().items:
-        resources.append(api_client.sanitize_for_serialization(item))
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
     for item in apps.list_deployment_for_all_namespaces().items:
-        resources.append(api_client.sanitize_for_serialization(item))
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
     for item in apps.list_replica_set_for_all_namespaces().items:
-        resources.append(api_client.sanitize_for_serialization(item))
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
     for item in apps.list_stateful_set_for_all_namespaces().items:
-        resources.append(api_client.sanitize_for_serialization(item))
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
     for item in apps.list_daemon_set_for_all_namespaces().items:
-        resources.append(api_client.sanitize_for_serialization(item))
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
 
     with open(outfile, 'w') as f:
         yaml.safe_dump_all(resources, f)
