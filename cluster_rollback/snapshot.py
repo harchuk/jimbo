@@ -8,7 +8,12 @@ SNAPSHOT_DIR = os.path.join(os.path.dirname(__file__), 'snapshots')
 
 
 def ensure_repo():
-    repo = Repo('.', search_parent_directories=True)
+    # Используем отдельный git-репозиторий для снапшотов
+    git_dir = os.path.join(SNAPSHOT_DIR, '.git')
+    if not os.path.exists(git_dir):
+        os.makedirs(SNAPSHOT_DIR, exist_ok=True)
+        Repo.init(SNAPSHOT_DIR)
+    repo = Repo(SNAPSHOT_DIR)
     return repo
 
 
