@@ -17,18 +17,17 @@ def ensure_repo():
     return repo
 
 
-def take_snapshot():
-    timestamp = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-    path = os.path.join(SNAPSHOT_DIR, timestamp)
-    os.makedirs(path, exist_ok=True)
-    outfile = os.path.join(path, 'resources.yaml')
-
-    config.load_incluster_config()
-    api_client = client.ApiClient()
+def collect_resources(api_client):
+    resources = []
     core = client.CoreV1Api(api_client)
     apps = client.AppsV1Api(api_client)
+    batch = client.BatchV1Api(api_client)
+    batchv1b = client.BatchV1beta1Api(api_client) if hasattr(client, 'BatchV1beta1Api') else None
+    networking = client.NetworkingV1Api(api_client)
+    autoscaling = client.AutoscalingV1Api(api_client)
+    rbac = client.RbacAuthorizationV1Api(api_client)
 
-    resources = []
+    # Core
     for item in core.list_pod_for_all_namespaces().items:
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
@@ -37,6 +36,24 @@ def take_snapshot():
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
+    for item in core.list_config_map_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    for item in core.list_persistent_volume_claim_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    for item in core.list_persistent_volume().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    for item in core.list_service_account_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+
+    # Apps
     for item in apps.list_deployment_for_all_namespaces().items:
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
@@ -54,11 +71,68 @@ def take_snapshot():
         if obj and 'kind' in obj:
             resources.append(obj)
 
+    # Batch
+    for item in batch.list_job_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    if batchv1b:
+        for item in batchv1b.list_cron_job_for_all_namespaces().items:
+            obj = api_client.sanitize_for_serialization(item)
+            if obj and 'kind' in obj:
+                resources.append(obj)
+
+    # Networking
+    for item in networking.list_ingress_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    for item in networking.list_network_policy_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+
+    # Autoscaling
+    for item in autoscaling.list_horizontal_pod_autoscaler_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+
+    # RBAC
+    for item in rbac.list_role_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    for item in rbac.list_role_binding_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    for item in rbac.list_cluster_role().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    for item in rbac.list_cluster_role_binding().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+
+    return resources
+
+
+def take_snapshot():
+    timestamp = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    path = os.path.join(SNAPSHOT_DIR, timestamp)
+    os.makedirs(path, exist_ok=True)
+    outfile = os.path.join(path, 'resources.yaml')
+
+    config.load_incluster_config()
+    api_client = client.ApiClient()
+    resources = collect_resources(api_client)
+
     with open(outfile, 'w') as f:
         yaml.safe_dump_all(resources, f)
 
     repo = ensure_repo()
-    # Проверяем, отличается ли новый снапшот от предыдущего
     try:
         commits = list(repo.iter_commits('HEAD'))
     except Exception:
@@ -71,7 +145,6 @@ def take_snapshot():
         prev_content = prev_tree.data_stream.read().decode('utf-8')
         if new_content == prev_content:
             print('Изменений нет, снапшот не создан.')
-            # Удаляем пустую папку
             os.remove(outfile)
             os.rmdir(path)
             return
