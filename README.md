@@ -48,10 +48,10 @@ MVP but can be added later.
 
 ## Deploying to Kubernetes
 
-Use the pre-built Docker image:
+Use the pre-built Docker image from the GitHub Container Registry:
 
 ```bash
-docker pull harchuk/cluster-rollback:latest
+docker pull ghcr.io/harchuk/cluster-rollback:latest
 ```
 
 Apply the following manifest to run the tool in your cluster. A copy is
@@ -74,7 +74,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: harchuk/cluster-rollback:latest
+          image: ghcr.io/harchuk/cluster-rollback:latest
           command: ["python", "-m", "cluster_rollback.web.app"]
           ports:
             - containerPort: 8000
@@ -100,7 +100,9 @@ desired snapshot and roll back with a single click.
 Merging changes to the `master` or `main` branch triggers a GitHub Actions workflow that:
 
 1. Bumps the project version and creates a new Git tag.
-2. Builds and pushes the Docker image to Docker Hub with both the versioned and `latest` tags.
+
+2. Builds the Docker image and pushes it to Docker Hub and the GitHub Container Registry with both the versioned and `latest` tags..
+
 3. Generates release notes from the commit history and publishes a GitHub release.
 
-Docker credentials must be provided via `DOCKER_USERNAME` and `DOCKER_TOKEN` repository secrets. The workflow uses the built-in `GITHUB_TOKEN` to publish releases.
+Docker credentials must be provided via `DOCKER_USERNAME` and `DOCKER_TOKEN` repository secrets for Docker Hub. The built-in `GITHUB_TOKEN` is used for publishing to `ghcr.io` and creating releases.
