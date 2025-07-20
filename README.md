@@ -48,10 +48,10 @@ MVP but can be added later.
 
 ## Deploying to Kubernetes
 
-Build the Docker image:
+Use the pre-built Docker image:
 
 ```bash
-docker build -t myrepo/cluster-rollback:latest .
+docker pull harchuk/cluster-rollback:latest
 ```
 
 Apply the following manifest to run the tool in your cluster. A copy is
@@ -74,7 +74,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: myrepo/cluster-rollback:latest
+          image: harchuk/cluster-rollback:latest
           command: ["python", "-m", "cluster_rollback.web.app"]
           ports:
             - containerPort: 8000
