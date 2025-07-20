@@ -132,19 +132,60 @@ def rollback(commit):
 
 @app.route('/diff/<commit>')
 def diff(commit):
-    commits = list(repo.iter_commits('HEAD'))
-    # Найти индекс текущего коммита
-    idx = next((i for i, c in enumerate(commits) if c.hexsha == commit), None)
-    if idx is None or idx == len(commits) - 1:
-        return "Diff недоступен для самого первого снапшота", 400
-    commit_new = commits[idx]
-    commit_old = commits[idx + 1]
-    # Получаем diff по всему snapshots (или только по resources.yaml, если структура одинакова)
-    diff_text = repo.git.diff(commit_old.hexsha, commit_new.hexsha, '--', 'snapshots')
-    # Можно сделать красивее через pygments, но для MVP достаточно <pre>
+    import tempfile
+    import yaml
+    # Получаем путь к снапшоту для выбранного коммита
+    obj = repo.commit(commit)
+    timestamp = obj.message.strip().split()[1]
+    snapshot_path = os.path.join(SNAPSHOT_DIR, timestamp, 'resources.yaml')
+    # Получаем текущее состояние кластера
+    config.load_incluster_config() if 'KUBERNETES_SERVICE_HOST' in os.environ else config.load_kube_config()
+    api_client = client.ApiClient()
+    core = client.CoreV1Api(api_client)
+    apps = client.AppsV1Api(api_client)
+    resources = []
+    for item in core.list_pod_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    for item in core.list_service_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    for item in apps.list_deployment_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    for item in apps.list_replica_set_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    for item in apps.list_stateful_set_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    for item in apps.list_daemon_set_for_all_namespaces().items:
+        obj = api_client.sanitize_for_serialization(item)
+        if obj and 'kind' in obj:
+            resources.append(obj)
+    # Сохраняем текущее состояние во временный файл
+    with tempfile.NamedTemporaryFile('w+', delete=False) as tmp:
+        yaml.safe_dump_all(resources, tmp)
+        tmp_path = tmp.name
+    # Сравниваем снапшот с текущим состоянием
+    import difflib
+    with open(snapshot_path, 'r') as f1, open(tmp_path, 'r') as f2:
+        snapshot_lines = f1.readlines()
+        current_lines = f2.readlines()
+    diff_lines = difflib.unified_diff(current_lines, snapshot_lines, fromfile='current_cluster.yaml', tofile='snapshot.yaml')
+    diff_text = ''.join(diff_lines)
+    if not diff_text:
+        diff_text = 'Нет различий: кластер уже соответствует выбранному снапшоту.'
+    # Удаляем временный файл
+    os.remove(tmp_path)
     return f"""
     <html><head><meta charset='utf-8'><title>Diff</title></head><body>
-    <h2>Diff между снапшотами {commit_new.committed_datetime.strftime('%Y-%m-%d %H:%M:%S')} и предыдущим</h2>
+    <h2>Diff между текущим состоянием кластера и выбранным снапшотом</h2>
     <pre style='background:#222;color:#eee;padding:10px;overflow-x:auto;'>{diff_text}</pre>
     <a href='{url_for('index')}'>Назад</a>
     </body></html>

@@ -58,6 +58,20 @@ def take_snapshot():
         yaml.safe_dump_all(resources, f)
 
     repo = ensure_repo()
+    # Проверяем, отличается ли новый снапшот от предыдущего
+    commits = list(repo.iter_commits('HEAD'))
+    if commits:
+        prev_commit = commits[0]
+        prev_tree = prev_commit.tree / f'{prev_commit.message.strip().split()[1]}/resources.yaml'
+        with open(outfile, 'r') as f_new:
+            new_content = f_new.read()
+        prev_content = prev_tree.data_stream.read().decode('utf-8')
+        if new_content == prev_content:
+            print('Изменений нет, снапшот не создан.')
+            # Удаляем пустую папку
+            os.remove(outfile)
+            os.rmdir(path)
+            return
     repo.index.add([outfile])
     repo.index.commit(f'Snapshot {timestamp}')
     print(f'Snapshot saved to {outfile}')
