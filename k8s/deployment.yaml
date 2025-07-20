@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cluster-rollback
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cluster-rollback
+  template:
+    metadata:
+      labels:
+        app: cluster-rollback
+    spec:
+      containers:
+      - name: web
+        image: myrepo/cluster-rollback:latest
+        command: ["python", "-m", "cluster_rollback.web.app"]
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cluster-rollback
+spec:
+  selector:
+    app: cluster-rollback
+  ports:
+  - port: 80
+    targetPort: 8000
