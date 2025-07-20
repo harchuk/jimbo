@@ -134,40 +134,15 @@ def rollback(commit):
 def diff(commit):
     import tempfile
     import yaml
+    from cluster_rollback.snapshot import collect_resources
     # Получаем путь к снапшоту для выбранного коммита
     obj = repo.commit(commit)
     timestamp = obj.message.strip().split()[1]
     snapshot_path = os.path.join(SNAPSHOT_DIR, timestamp, 'resources.yaml')
-    # Получаем текущее состояние кластера
+    # Получаем текущее состояние кластера (все ключевые ресурсы)
     config.load_incluster_config() if 'KUBERNETES_SERVICE_HOST' in os.environ else config.load_kube_config()
     api_client = client.ApiClient()
-    core = client.CoreV1Api(api_client)
-    apps = client.AppsV1Api(api_client)
-    resources = []
-    for item in core.list_pod_for_all_namespaces().items:
-        obj = api_client.sanitize_for_serialization(item)
-        if obj and 'kind' in obj:
-            resources.append(obj)
-    for item in core.list_service_for_all_namespaces().items:
-        obj = api_client.sanitize_for_serialization(item)
-        if obj and 'kind' in obj:
-            resources.append(obj)
-    for item in apps.list_deployment_for_all_namespaces().items:
-        obj = api_client.sanitize_for_serialization(item)
-        if obj and 'kind' in obj:
-            resources.append(obj)
-    for item in apps.list_replica_set_for_all_namespaces().items:
-        obj = api_client.sanitize_for_serialization(item)
-        if obj and 'kind' in obj:
-            resources.append(obj)
-    for item in apps.list_stateful_set_for_all_namespaces().items:
-        obj = api_client.sanitize_for_serialization(item)
-        if obj and 'kind' in obj:
-            resources.append(obj)
-    for item in apps.list_daemon_set_for_all_namespaces().items:
-        obj = api_client.sanitize_for_serialization(item)
-        if obj and 'kind' in obj:
-            resources.append(obj)
+    resources = collect_resources(api_client)
     # Сохраняем текущее состояние во временный файл
     with tempfile.NamedTemporaryFile('w+', delete=False) as tmp:
         yaml.safe_dump_all(resources, tmp)
@@ -181,7 +156,6 @@ def diff(commit):
     diff_text = ''.join(diff_lines)
     if not diff_text:
         diff_text = 'Нет различий: кластер уже соответствует выбранному снапшоту.'
-    # Удаляем временный файл
     os.remove(tmp_path)
     return f"""
     <html><head><meta charset='utf-8'><title>Diff</title></head><body>
@@ -191,20 +165,25 @@ def diff(commit):
     </body></html>
     """
 
-def safe_take_snapshot():
+def safe_take_snapshot(auto=True):
     global last_snapshot_time
     with snapshot_lock:
         now = time.time()
-        # Не чаще одного раза в 60 секунд
-        if now - last_snapshot_time >= 60:
+        if auto:
+            # Не чаще одного раза в 60 секунд
+            if now - last_snapshot_time >= 60:
+                take_snapshot()
+                last_snapshot_time = now
+            else:
+                print("Слишком частые события, снапшот не создан.")
+        else:
+            # Ручной режим — всегда пробуем создать снапшот
             take_snapshot()
             last_snapshot_time = now
-        else:
-            print("Слишком частые события, снапшот не создан.")
 
 @app.route('/snapshot', methods=['POST'])
 def snapshot():
-    safe_take_snapshot()
+    safe_take_snapshot(auto=False)
     return redirect(url_for('index'))
 
 def watch_cluster_resources():
@@ -227,7 +206,7 @@ def watch_cluster_resources():
 def watch_resource(w, func, name):
     for event in w.stream(func, timeout_seconds=0):
         print(f"Detected {event['type']} on {name}: {event['object'].metadata.name}")
-        safe_take_snapshot()
+        safe_take_snapshot(auto=True)
 
 def load_kube_config_auto():
     try:
