@@ -59,7 +59,10 @@ def take_snapshot():
 
     repo = ensure_repo()
     # Проверяем, отличается ли новый снапшот от предыдущего
-    commits = list(repo.iter_commits('HEAD'))
+    try:
+        commits = list(repo.iter_commits('HEAD'))
+    except Exception:
+        commits = []
     if commits:
         prev_commit = commits[0]
         prev_tree = prev_commit.tree / f'{prev_commit.message.strip().split()[1]}/resources.yaml'
