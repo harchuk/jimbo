@@ -6,6 +6,7 @@ from cluster_rollback.snapshot import take_snapshot, ensure_repo
 import threading
 from kubernetes import watch
 import time
+from kubernetes.config import ConfigException
 
 # Глобальные переменные для защиты от частых снапшотов
 last_snapshot_time = 0
@@ -67,7 +68,7 @@ def rollback(commit):
     timestamp = obj.message.strip().split()[1]
     repo.git.checkout(commit, '--', SNAPSHOT_DIR)
     snapshot_path = os.path.join(SNAPSHOT_DIR, timestamp, 'resources.yaml')
-    config.load_kube_config()
+    load_kube_config_auto()
     utils.create_from_yaml(client.ApiClient(), snapshot_path)
     return redirect(url_for('index'))
 
@@ -88,7 +89,7 @@ def snapshot():
     return redirect(url_for('index'))
 
 def watch_cluster_resources():
-    config.load_kube_config()
+    load_kube_config_auto()
     w = watch.Watch()
     core = client.CoreV1Api()
     apps = client.AppsV1Api()
@@ -108,6 +109,17 @@ def watch_resource(w, func, name):
     for event in w.stream(func, timeout_seconds=0):
         print(f"Detected {event['type']} on {name}: {event['object'].metadata.name}")
         safe_take_snapshot()
+
+def load_kube_config_auto():
+    try:
+        # В кластере
+        if 'KUBERNETES_SERVICE_HOST' in os.environ:
+            config.load_incluster_config()
+        else:
+            config.load_kube_config()
+    except ConfigException as e:
+        print(f"[ERROR] Не удалось загрузить kubeconfig: {e}")
+        raise
 
 if __name__ == '__main__':
     # При старте приложения — если нет ни одного снапшота, создать первый

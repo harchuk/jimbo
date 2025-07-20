@@ -23,7 +23,7 @@ def take_snapshot():
     os.makedirs(path, exist_ok=True)
     outfile = os.path.join(path, 'resources.yaml')
 
-    config.load_kube_config()
+    config.load_incluster_config()
     api_client = client.ApiClient()
     core = client.CoreV1Api(api_client)
     apps = client.AppsV1Api(api_client)
@@ -61,7 +61,7 @@ def rollback(commit):
     repo.git.checkout(commit, '--', SNAPSHOT_DIR)
     snapshot_path = os.path.join(SNAPSHOT_DIR, timestamp, 'resources.yaml')
 
-    config.load_kube_config()
+    config.load_incluster_config()
     utils.create_from_yaml(client.ApiClient(), snapshot_path)
     print(f'Rolled back to commit {commit}')
 
