@@ -54,7 +54,8 @@ Build the Docker image:
 docker build -t myrepo/cluster-rollback:latest .
 ```
 
-Apply the following manifest to run the tool in your cluster:
+Apply the following manifest to run the tool in your cluster. A copy is
+available under `k8s/deployment.yaml` for convenience:
 
 ```yaml
 apiVersion: apps/v1
