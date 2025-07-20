@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: web
-        image: harchuk/cluster-rollback:latest
+        image: ghcr.io/harchuk/cluster-rollback:latest
         command: ["python", "-m", "cluster_rollback.web.app"]
         ports:
         - containerPort: 8000
