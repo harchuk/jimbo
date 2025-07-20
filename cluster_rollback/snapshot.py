@@ -27,91 +27,98 @@ def collect_resources(api_client):
     autoscaling = client.AutoscalingV1Api(api_client)
     rbac = client.RbacAuthorizationV1Api(api_client)
 
+    def safe_list(fn, name):
+        try:
+            return fn()
+        except Exception as e:
+            print(f"[ERROR] Не удалось получить {name}: {e}")
+            return []
+
     # Core
-    for item in core.list_pod_for_all_namespaces().items:
+    for item in safe_list(lambda: core.list_pod_for_all_namespaces().items, 'pods'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
-    for item in core.list_service_for_all_namespaces().items:
+    for item in safe_list(lambda: core.list_service_for_all_namespaces().items, 'services'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
-    for item in core.list_config_map_for_all_namespaces().items:
+    for item in safe_list(lambda: core.list_config_map_for_all_namespaces().items, 'configmaps'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
-    for item in core.list_persistent_volume_claim_for_all_namespaces().items:
+    for item in safe_list(lambda: core.list_persistent_volume_claim_for_all_namespaces().items, 'persistentvolumeclaims'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
-    for item in core.list_persistent_volume().items:
+    for item in safe_list(lambda: core.list_persistent_volume().items, 'persistentvolumes'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
-    for item in core.list_service_account_for_all_namespaces().items:
+    for item in safe_list(lambda: core.list_service_account_for_all_namespaces().items, 'serviceaccounts'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
 
     # Apps
-    for item in apps.list_deployment_for_all_namespaces().items:
+    for item in safe_list(lambda: apps.list_deployment_for_all_namespaces().items, 'deployments'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
-    for item in apps.list_replica_set_for_all_namespaces().items:
+    for item in safe_list(lambda: apps.list_replica_set_for_all_namespaces().items, 'replicasets'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
-    for item in apps.list_stateful_set_for_all_namespaces().items:
+    for item in safe_list(lambda: apps.list_stateful_set_for_all_namespaces().items, 'statefulsets'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
-    for item in apps.list_daemon_set_for_all_namespaces().items:
+    for item in safe_list(lambda: apps.list_daemon_set_for_all_namespaces().items, 'daemonsets'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
 
     # Batch
-    for item in batch.list_job_for_all_namespaces().items:
+    for item in safe_list(lambda: batch.list_job_for_all_namespaces().items, 'jobs'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
     if batchv1b:
-        for item in batchv1b.list_cron_job_for_all_namespaces().items:
+        for item in safe_list(lambda: batchv1b.list_cron_job_for_all_namespaces().items, 'cronjobs'):
             obj = api_client.sanitize_for_serialization(item)
             if obj and 'kind' in obj:
                 resources.append(obj)
 
     # Networking
-    for item in networking.list_ingress_for_all_namespaces().items:
+    for item in safe_list(lambda: networking.list_ingress_for_all_namespaces().items, 'ingresses'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
-    for item in networking.list_network_policy_for_all_namespaces().items:
+    for item in safe_list(lambda: networking.list_network_policy_for_all_namespaces().items, 'networkpolicies'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
 
     # Autoscaling
-    for item in autoscaling.list_horizontal_pod_autoscaler_for_all_namespaces().items:
+    for item in safe_list(lambda: autoscaling.list_horizontal_pod_autoscaler_for_all_namespaces().items, 'horizontalpodautoscalers'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
 
     # RBAC
-    for item in rbac.list_role_for_all_namespaces().items:
+    for item in safe_list(lambda: rbac.list_role_for_all_namespaces().items, 'roles'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
-    for item in rbac.list_role_binding_for_all_namespaces().items:
+    for item in safe_list(lambda: rbac.list_role_binding_for_all_namespaces().items, 'rolebindings'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
-    for item in rbac.list_cluster_role().items:
+    for item in safe_list(lambda: rbac.list_cluster_role().items, 'clusterroles'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
-    for item in rbac.list_cluster_role_binding().items:
+    for item in safe_list(lambda: rbac.list_cluster_role_binding().items, 'clusterrolebindings'):
         obj = api_client.sanitize_for_serialization(item)
         if obj and 'kind' in obj:
             resources.append(obj)
