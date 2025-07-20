@@ -39,7 +39,9 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/cluster-rollback:${{ steps.version.outputs.new_tag }}
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/cluster-rollback:${{ steps.version.outputs.new_tag }}
+            ${{ secrets.DOCKER_USERNAME }}/cluster-rollback:latest
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
