@@ -101,7 +101,7 @@ Merging changes to the `master` or `main` branch triggers a GitHub Actions workf
 
 1. Bumps the project version and creates a new Git tag.
 
-2. Builds the Docker image and pushes it to Docker Hub and the GitHub Container Registry with both the versioned and `latest` tags..
+2. Builds multi-platform Docker images (linux/amd64 and linux/arm64) and pushes them to Docker Hub and the GitHub Container Registry with both the versioned and `latest` tags.
 
 3. Generates release notes from the commit history and publishes a GitHub release.
 
