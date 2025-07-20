@@ -100,7 +100,9 @@ desired snapshot and roll back with a single click.
 Merging changes to the `master` or `main` branch triggers a GitHub Actions workflow that:
 
 1. Bumps the project version and creates a new Git tag.
-2. Builds the Docker image and pushes it to Docker Hub and the GitHub Container Registry.
+
+2. Builds the Docker image and pushes it to Docker Hub and the GitHub Container Registry with both the versioned and `latest` tags..
+
 3. Generates release notes from the commit history and publishes a GitHub release.
 
 Docker credentials must be provided via `DOCKER_USERNAME` and `DOCKER_TOKEN` repository secrets for Docker Hub. The built-in `GITHUB_TOKEN` is used for publishing to `ghcr.io` and creating releases.
