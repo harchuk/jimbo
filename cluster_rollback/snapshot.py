@@ -29,7 +29,9 @@ def collect_resources(api_client):
 
     def safe_list(fn, name):
         try:
-            return fn()
+            items = fn()
+            print(f"[SNAPSHOT] {name}: {len(items)} объектов")
+            return items
         except Exception as e:
             print(f"[ERROR] Не удалось получить {name}: {e}")
             return []
