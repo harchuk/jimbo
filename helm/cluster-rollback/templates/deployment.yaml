@@ -2,9 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: cluster-rollback
-  namespace: cluster-rollback
+  namespace: {{ .Values.namespace }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: cluster-rollback
@@ -16,18 +16,8 @@ spec:
       serviceAccountName: cluster-rollback-sa
       containers:
         - name: web
-          image: ghcr.io/harchuk/cluster-rollback:latest
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["python", "-m", "cluster_rollback.web.app"]
           ports:
-            - containerPort: 8000
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: cluster-rollback
-spec:
-  selector:
-    app: cluster-rollback
-  ports:
-  - port: 80
-    targetPort: 8000
+            - containerPort: 8000 
