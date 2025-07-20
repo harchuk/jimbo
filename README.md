@@ -94,3 +94,13 @@ spec:
 Expose the service with an Ingress or a LoadBalancer according to your
 environment. Once deployed, access the UI and use the timeline to select the
 desired snapshot and roll back with a single click.
+
+## Continuous delivery
+
+Merging changes to the `master` or `main` branch triggers a GitHub Actions workflow that:
+
+1. Bumps the project version and creates a new Git tag.
+2. Builds and pushes the Docker image to Docker Hub.
+3. Generates release notes from the commit history and publishes a GitHub release.
+
+Docker credentials must be provided via `DOCKER_USERNAME` and `DOCKER_TOKEN` repository secrets. The workflow uses the built-in `GITHUB_TOKEN` to publish releases.
