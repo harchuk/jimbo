@@ -9,6 +9,8 @@ It includes both a CLI utility and a web interface with a timeline of commits.
 * Python 3.8+
 * Access to your cluster via a kubeconfig file (no `kubectl` required)
 * Access to a local or remote Git repository
+* Git installed in the environment (required by GitPython). The provided
+  Dockerfile installs it automatically.
 
 Install dependencies:
 
