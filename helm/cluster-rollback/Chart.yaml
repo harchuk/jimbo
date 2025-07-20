@@ -1,0 +1,4 @@
+apiVersion: v2
+name: cluster-rollback
+version: 0.1.0
+description: Helm chart для деплоя приложения Cluster Rollback с RBAC и сервис-аккаунтом 
