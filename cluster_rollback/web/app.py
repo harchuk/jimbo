@@ -3,6 +3,13 @@ from git import Repo
 from kubernetes import client, config, utils
 import os
 from cluster_rollback.snapshot import take_snapshot, ensure_repo
+import threading
+from kubernetes import watch
+import time
+
+# Глобальные переменные для защиты от частых снапшотов
+last_snapshot_time = 0
+snapshot_lock = threading.Lock()
 
 app = Flask(__name__)
 SNAPSHOT_DIR = os.path.join(os.path.dirname(__file__), '..', 'snapshots')
@@ -48,7 +55,10 @@ TEMPLATE = """
 
 @app.route('/')
 def index():
-    commits = list(repo.iter_commits('HEAD'))
+    try:
+        commits = list(repo.iter_commits('HEAD'))
+    except Exception:
+        commits = []
     return render_template_string(TEMPLATE, commits=commits)
 
 @app.route('/rollback/<commit>')
@@ -61,13 +71,52 @@ def rollback(commit):
     utils.create_from_yaml(client.ApiClient(), snapshot_path)
     return redirect(url_for('index'))
 
+def safe_take_snapshot():
+    global last_snapshot_time
+    with snapshot_lock:
+        now = time.time()
+        # Не чаще одного раза в 60 секунд
+        if now - last_snapshot_time >= 60:
+            take_snapshot()
+            last_snapshot_time = now
+        else:
+            print("Слишком частые события, снапшот не создан.")
+
 @app.route('/snapshot', methods=['POST'])
 def snapshot():
-    take_snapshot()
+    safe_take_snapshot()
     return redirect(url_for('index'))
+
+def watch_cluster_resources():
+    config.load_kube_config()
+    w = watch.Watch()
+    core = client.CoreV1Api()
+    apps = client.AppsV1Api()
+    # Слушаем события по Pod, Service, Deployment, ReplicaSet, StatefulSet, DaemonSet
+    resource_watchers = [
+        (core.list_pod_for_all_namespaces, "Pod"),
+        (core.list_service_for_all_namespaces, "Service"),
+        (apps.list_deployment_for_all_namespaces, "Deployment"),
+        (apps.list_replica_set_for_all_namespaces, "ReplicaSet"),
+        (apps.list_stateful_set_for_all_namespaces, "StatefulSet"),
+        (apps.list_daemon_set_for_all_namespaces, "DaemonSet"),
+    ]
+    for func, name in resource_watchers:
+        threading.Thread(target=watch_resource, args=(w, func, name), daemon=True).start()
+
+def watch_resource(w, func, name):
+    for event in w.stream(func, timeout_seconds=0):
+        print(f"Detected {event['type']} on {name}: {event['object'].metadata.name}")
+        safe_take_snapshot()
 
 if __name__ == '__main__':
     # При старте приложения — если нет ни одного снапшота, создать первый
-    if not list(repo.iter_commits('HEAD')):
+    try:
+        has_commits = repo.head.is_valid()
+    except Exception:
+        has_commits = False
+    if not has_commits:
         take_snapshot()
+        import time as _t; last_snapshot_time = _t.time()
+    watch_cluster_resources()
     app.run(host='0.0.0.0', port=8000)
