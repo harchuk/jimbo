@@ -7,7 +7,7 @@ It includes both a CLI utility and a web interface with a timeline of commits.
 ## Requirements
 
 * Python 3.8+
-* `kubectl` configured for your cluster
+* Access to your cluster via a kubeconfig file (no `kubectl` required)
 * Access to a local or remote Git repository
 
 Install dependencies:
